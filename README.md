@@ -9,7 +9,7 @@ Basic Usage
 -----------
 
 ```
-const { PrattParser } = require('pratt-parser');
+const { PrattParser } = require('pratt-expr');
 
 const parser = new PrattParser();
 
