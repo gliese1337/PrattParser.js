@@ -23,7 +23,7 @@ parser.register('NAME', {
       },
     };
   }
-}, true);
+}, PrattParser.PREFIX);
 
 parser.register('=', {
   precedence: Precedence.ASSIGNMENT,
@@ -37,7 +37,7 @@ parser.register('=', {
       },
     };
   }
-}, false);
+}, PrattParser.XFIX);
 
 parser.register('(', {
   parse(parser, token) {
@@ -50,7 +50,7 @@ parser.register('(', {
       }
     };
   }
-}, true);
+}, PrattParser.PREFIX);
 
 parser.register('(', {
   precedence: Precedence.CALL,
@@ -72,7 +72,7 @@ parser.register('(', {
       },
     };
   }
-}, false);
+}, PrattParser.XFIX);
 
 parser.register('?', {
   precedence: Precedence.CONDITIONAL,
@@ -90,98 +90,98 @@ parser.register('?', {
       },
     };
   }
-}, false);
+}, PrattParser.XFIX);
 
-parser.register('+', new PrefixUnaryParselet(function(token, right) { 
+parser.register('+', new PrefixUnaryParselet((token, right) => { 
   return {
     right,
     toString() {
       return `(+${right})`;
     }
   }
-}, Precedence.PREFIX), true);
+}, Precedence.PREFIX), PrattParser.PREFIX);
 
-parser.register('-', new PrefixUnaryParselet(function(token, right) { 
+parser.register('-', new PrefixUnaryParselet((token, right) => { 
   return {
     right,
     toString() {
       return `(-${right})`;
     }
   }
-}, Precedence.PREFIX), true);
+}, Precedence.PREFIX), PrattParser.PREFIX);
 
-parser.register('~', new PrefixUnaryParselet(function(token, right) { 
+parser.register('~', new PrefixUnaryParselet((token, right) => { 
   return {
     right,
     toString() {
       return `(~${right})`;
     }
   }
-}, Precedence.PREFIX), true);
+}, Precedence.PREFIX), PrattParser.PREFIX);
 
-parser.register('!', new PrefixUnaryParselet(function(token, right) { 
+parser.register('!', new PrefixUnaryParselet((token, right) => { 
   return {
     right,
     toString() {
       return `(!${right})`;
     }
   }
-}, Precedence.PREFIX), true);
+}, Precedence.PREFIX), PrattParser.PREFIX);
     
 // For kicks, we'll make "!" both prefix and postfix, kind of like ++.
-parser.register('!', new PostfixUnaryParselet(function(token, left) { 
+parser.register('!', new PostfixUnaryParselet((token, left) => { 
   return {
     left,
     toString() {
       return `(${left}!)`;
     }
   }
-}, Precedence.POSTFIX), false);
+}, Precedence.POSTFIX), PrattParser.XFIX);
 
-parser.register('+', new BinaryParselet(function(token, left, right) { 
+parser.register('+', new BinaryParselet((token, left, right) => { 
   return {
     left, right,
     toString() {
       return `(${left}+${right})`;
     }
   }
-}, Precedence.SUM, "left"), false);
+}, Precedence.SUM, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
 
-parser.register('-', new BinaryParselet(function(token, left, right) { 
+parser.register('-', new BinaryParselet((token, left, right) => { 
   return {
     left, right,
     toString() {
       return `(${left}-${right})`;
     }
   }
-}, Precedence.SUM, "left"), false);
+}, Precedence.SUM, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
 
-parser.register('*', new BinaryParselet(function(token, left, right) { 
+parser.register('*', new BinaryParselet((token, left, right) => { 
   return {
     left, right,
     toString() {
       return `(${left}*${right})`;
     }
   }
-}, Precedence.PRODUCT, "left"), false);
+}, Precedence.PRODUCT, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
 
-parser.register('/', new BinaryParselet(function(token, left, right) { 
+parser.register('/', new BinaryParselet((token, left, right) => { 
   return {
     left, right,
     toString() {
       return `(${left}/${right})`;
     }
   }
-}, Precedence.PRODUCT, "left"), false);
+}, Precedence.PRODUCT, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
 
-parser.register('^', new BinaryParselet(function(token, left, right) { 
+parser.register('^', new BinaryParselet((token, left, right) => { 
   return {
     left, right,
     toString() {
       return `(${left}^${right})`;
     }
   }
-}, Precedence.EXPONENT, "right"), false);
+}, Precedence.EXPONENT, BinaryParselet.RIGHT_ASSOC), PrattParser.XFIX);
 
 const punctuation = "()-+=*^/~?!:,".split('');
 function lex(str) {

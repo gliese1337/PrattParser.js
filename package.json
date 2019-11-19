@@ -1,11 +1,16 @@
 {
-  "name": "pratt-parser",
+  "name": "pratt-expr",
   "version": "1.0.0",
   "description": "A generic Pratt expression parser",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
   "scripts": {
+    "build": "tsc",
     "test": "mocha --recursive",
-    "build": "tsc"
+    "prepare": "npm run build"
   },
   "keywords": [
     "pratt",
@@ -17,5 +22,17 @@
     "chai": "^4.2.0",
     "mocha": "^6.2.2",
     "typescript": "^3.7.2"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gliese1337/PrattParser.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gliese1337/PrattParser.js/issues"
+  },
+  "homepage": "https://github.com/gliese1337/PrattParser.js#readme"
 }

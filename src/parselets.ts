@@ -6,6 +6,7 @@ export interface Token {
 export interface ExprParser<T> {
   peek(d: number): Token | undefined;
   consume(expect?: string): Token;
+  match(expect: string): boolean;
   parse(precedence: number): T;
 }
 

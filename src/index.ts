@@ -93,6 +93,9 @@ export class PrattParser<T> {
   private xfixParselets = new Map<string, XfixParselet<T>>();
   private interpreter: ((node: T) => T) | null = null;
 
+  public static readonly PREFIX = true;
+  public static readonly XFIX = false;
+
   public register(tokenType: string, parselet: PrefixParselet<T>, prefix: true): void;
   public register(tokenType: string, parselet: XfixParselet<T>, prefix: false): void;
   public register(tokenType: string, parselet: Parselet<T>, prefix: boolean) {
