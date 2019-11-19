@@ -1,0 +1,21 @@
+{
+  "name": "pratt-parser",
+  "version": "1.0.0",
+  "description": "A generic Pratt expression parser",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "mocha --recursive",
+    "build": "tsc"
+  },
+  "keywords": [
+    "pratt",
+    "parser"
+  ],
+  "author": "Logan R. Kearsley",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^6.2.2",
+    "typescript": "^3.7.2"
+  }
+}
