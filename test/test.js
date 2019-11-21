@@ -11,7 +11,10 @@ describe("Test Parser on Bantam Language", () => {
     expect(test("a ! ! !")).to.eql("(((a!)!)!)");
   });
   it("should parse binary operators with correct precedence", () => {
-    expect(test("a = b + c * d ^ e - f / g")).to.eql("(a=((b+(c*(d^e)))-(f/g)))");
+    expect(test("a = b + c * d ^ e - f / g"))
+      .to.eql("(a=((b+(c*(d^e)))-(f/g)))");
+    expect(test("x = y ; q = p ; a = b + c * d ^ e - f / g"))
+      .to.eql("((x=y);((q=p);(a=((b+(c*(d^e)))-(f/g)))))");
   });
   it("should parse binary operators with correct associativity", () => {
     expect(test("a = b = c")).to.eql("(a=(b=c))");

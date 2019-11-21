@@ -1,31 +1,48 @@
-import { Token, Parselet, PrefixParselet, XfixParselet, ExprParser } from './parselets';
+import {
+  Token,
+  Parselet,
+  PrefixParselet,
+  XfixParselet,
+  IXfixParselet,
+  PrefixUnaryParselet,
+  PostfixUnaryParselet,
+  BinaryParselet,
+  ExprParser,
+} from './parselets';
 
-export { Token, Parselet, PrefixParselet, XfixParselet, ExprParser };
-export { BinaryParselet } from './binop';
-export { PrefixUnaryParselet } from './preop';
-export { PostfixUnaryParselet } from './postop';
+export {
+  Token,
+  Parselet,
+  PrefixParselet,
+  XfixParselet,
+  IXfixParselet,
+  PrefixUnaryParselet,
+  PostfixUnaryParselet,
+  BinaryParselet,
+  ExprParser,
+}
 
-class XParser<T> implements ExprParser<T> {
-  private g: Iterator<Token>;
-  private q: Token[] = [];
+class XParser<N, T extends Token> implements ExprParser<N, T> {
+  private g: Iterator<T>;
+  private q: T[] = [];
 
   constructor(
-    private prefixParselets: Map<string, PrefixParselet<T>>,
-    private xfixParselets:  Map<string, XfixParselet<T>>,
-    private interpreter: ((node: T) => T) | null,
-    tokens: Iterable<Token>,
+    private prefixParselets: Map<string, PrefixParselet<N, T>>,
+    private xfixParselets:  Map<string, XfixParselet<N, T>>,
+    private interpreter: ((node: N) => N) | null,
+    tokens: Iterable<T>,
   ) {
     this.g = tokens[Symbol.iterator]();
   }
 
-  peek(d: number): Token | undefined {
+  peek(d: number): T | undefined {
     while(d >= this.q.length) {
       this.q.push(this.g.next().value);
     }
     return this.q[d];
   }
 
-  consume(expect?: string): Token {
+  consume(expect?: string): T {
     const t = this.q.length ? this.q.shift() : this.g.next().value;
 
     if (expect) {
@@ -61,7 +78,7 @@ class XParser<T> implements ExprParser<T> {
     const token = this.consume();
     const prefix = this.prefixParselets.get(token.type);
 
-    if (!prefix) throw new Error(`Could not parse "${ token.text }".`);
+    if (!prefix) throw token;
 
     let left = prefix.parse(this, token);
 
@@ -70,7 +87,7 @@ class XParser<T> implements ExprParser<T> {
       while(precedence < this.precedence) {
         const token = this.consume();
         const xfix = this.xfixParselets.get(token.type);
-        if (!xfix) throw new Error(`Could not parse "${ token.text }".`);
+        if (!xfix) throw token;
         left = xfix.parse(this, token, left);
       }
     } else {
@@ -79,7 +96,7 @@ class XParser<T> implements ExprParser<T> {
       while(precedence < this.precedence) {
         const token = this.consume();
         const xfix = this.xfixParselets.get(token.type);
-        if (!xfix) throw new Error(`Could not parse "${ token.text }".`);
+        if (!xfix) throw token;
         left = interp(xfix.parse(this, token, left));
       }
     }
@@ -88,29 +105,65 @@ class XParser<T> implements ExprParser<T> {
   }
 }
 
-export class PrattParser<T> {
-  private prefixParselets = new Map<string, PrefixParselet<T>>();
-  private xfixParselets = new Map<string, XfixParselet<T>>();
-  private interpreter: ((node: T) => T) | null = null;
+export class PrattParser<N, T extends Token> {
+  private prefixParselets = new Map<string, Parselet<N, T>>();
+  private xfixParselets = new Map<string, IXfixParselet<N, T>>();
+  private interpreter: ((node: N) => N) | null = null;
 
   public static readonly PREFIX = true;
   public static readonly XFIX = false;
+  
+  public static readonly RIGHT_ASSOC = true;
+  public static readonly LEFT_ASSOC = false;
 
-  public register(tokenType: string, parselet: PrefixParselet<T>, prefix: true): void;
-  public register(tokenType: string, parselet: XfixParselet<T>, prefix: false): void;
-  public register(tokenType: string, parselet: Parselet<T>, prefix: boolean) {
-    (prefix ? this.prefixParselets : this.xfixParselets).set(tokenType, parselet as any)
+  public register(tokenType: string, parselet: Parselet<N, T>, prefix?: boolean) {
+    if (prefix === void 0) {
+      if (parselet instanceof PrefixParselet) {
+        this.prefixParselets.set(tokenType, parselet);
+      } else if (parselet instanceof XfixParselet) {
+        this.xfixParselets.set(tokenType, parselet);
+      } else {
+        throw new Error("Cannot determine parselet type.");
+      }
+      return;
+    }
+
+    if (prefix) {
+      this.prefixParselets.set(tokenType, parselet);
+    } else{
+      if (parselet.hasOwnProperty('precedence')) {
+        this.xfixParselets.set(tokenType, parselet as IXfixParselet<N, T>);
+      } else {
+        throw new Error("Xfix operators must specify precedence");
+      }
+    }
   }
 
-  public setInterpreter(i: ((node: T) => T) | null){
+  public nullary(tokenType: string, cons: (token: T) => N) {
+    this.register(tokenType, { parse: (_, token) => cons(token) }, true);
+  }
+
+  public prefix(tokenType: string, precedence: number, cons: (token: T, right: N) => N) {
+      this.register(tokenType, new PrefixUnaryParselet(cons, precedence));
+  }
+
+  public postfix(tokenType: string, precedence: number, cons: (token: T, left: N) => N) {
+      this.register(tokenType, new PostfixUnaryParselet(cons, precedence));
+  }
+
+  public infix(tokenType: string, precedence: number, associativity: boolean, cons: (token: T, left: N, right: N) => N) {
+      this.register(tokenType, new BinaryParselet(cons, precedence, associativity));
+  }
+
+  public setInterpreter(i: ((node: N) => N) | null){
     this.interpreter = i;
   }
 
-  public parse(tokens: Iterable<Token>) {
+  public parse(tokens: Iterable<T>) {
     return (new XParser(this.prefixParselets, this.xfixParselets, null, tokens)).parse(0);
   }
 
-  public interpret(tokens: Iterable<Token>) {
+  public interpret(tokens: Iterable<T>) {
     return (new XParser(this.prefixParselets, this.xfixParselets, this.interpreter, tokens)).parse(0);
   }
 }

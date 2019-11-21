@@ -4,51 +4,78 @@ const parser = new PrattParser();
 
 const Precedence = {
   // Ordered in increasing precedence.
-  ASSIGNMENT : 1,
-  CONDITIONAL: 2,
-  SUM        : 3,
-  PRODUCT    : 4,
-  EXPONENT   : 5,
-  PREFIX     : 6,
-  POSTFIX    : 7,
-  CALL       : 8,
+  STATEMENT  : 1,
+  ASSIGNMENT : 2,
+  CONDITIONAL: 3,
+  SUM        : 4,
+  PRODUCT    : 5,
+  EXPONENT   : 6,
+  PREFIX     : 7,
+  POSTFIX    : 8,
+  CALL       : 9,
 };
 
-parser.register('NAME', {
-  parse(_, token) {
-    return {
-      name: token.text,
-      toString() {
-        return this.name;
-      },
-    };
-  }
-}, PrattParser.PREFIX);
+parser.nullary('NAME', (token) => ({
+  name: token.text,
+  toString() { return this.name; },
+}));
 
-parser.register('=', {
-  precedence: Precedence.ASSIGNMENT,
-  parse(parser, token, left) {
-    const right = parser.parse(this.precedence - 1);
-    if (!left.hasOwnProperty('name')) throw new Error("The left-hand side of an assignment must be a name.");
-    return {
-      left, right,
-      toString(){
-        return `(${this.left}=${this.right})`;
-      },
-    };
-  }
-}, PrattParser.XFIX);
+parser.infix('=', Precedence.ASSIGNMENT, PrattParser.RIGHT_ASSOC, (token, left, right) => {
+  if (!left.hasOwnProperty('name'))
+    throw new Error("The left-hand side of an assignment must be a name.");
+  return { toString(){ return `(${left}=${right})`; },
+  };
+});
+
+parser.prefix('+', Precedence.PREFIX, (token, right) => ({
+  toString() { return `(+${right})`; }
+}));
+
+parser.prefix('-', Precedence.PREFIX, (token, right) => ({
+  toString() { return `(-${right})`; }
+}));
+
+parser.prefix('~', Precedence.PREFIX, (token, right) => ({
+  toString() { return `(~${right})`; }
+}));
+
+parser.prefix('!', Precedence.PREFIX, (token, right) => ({
+  toString() { return `(!${right})`; }
+}));
+
+parser.postfix('!', Precedence.POSTFIX, (token, left) => ({
+  toString() { return `(${left}!)`; }
+}));
+
+parser.infix('+', Precedence.SUM, PrattParser.LEFT_ASSOC, (token, left, right) => ({
+  toString() { return `(${left}+${right})`; }
+}));
+
+parser.infix('-', Precedence.SUM, PrattParser.LEFT_ASSOC, (token, left, right) => ({
+  toString() { return `(${left}-${right})`; }
+}));
+
+parser.infix('*', Precedence.PRODUCT, PrattParser.LEFT_ASSOC, (token, left, right) => ({
+  toString() { return `(${left}*${right})`; }
+}));
+
+parser.infix('/', Precedence.PRODUCT, PrattParser.LEFT_ASSOC, (token, left, right) => ({
+  toString() { return `(${left}/${right})`; }
+}));
+
+parser.infix('^', Precedence.EXPONENT, PrattParser.RIGHT_ASSOC, (token, left, right) => ({
+  toString() { return `(${left}^${right})`; }
+}));
+
+parser.infix(';', Precedence.STATEMENT, PrattParser.RIGHT_ASSOC, (token, left, right) => ({
+  toString() { return `(${left};${right})`; }
+}));
 
 parser.register('(', {
   parse(parser, token) {
     const expr = parser.parse(0);
     parser.consume(')');
-    return {
-      expr,
-      toString() {
-        return ''+this.expr;
-      }
-    };
+    return { toString() { return ''+expr; } };
   }
 }, PrattParser.PREFIX);
 
@@ -64,13 +91,7 @@ parser.register('(', {
       parser.consume(')');
     }
 
-    return {
-      name: left,
-      args,
-      toString() {
-        return `${ this.name }(${this.args.join(',')})`;
-      },
-    };
+    return { toString() { return `${left}(${args.join(',')})`; } };
   }
 }, PrattParser.XFIX);
 
@@ -81,109 +102,11 @@ parser.register('?', {
     parser.consume(':');
     const elseArm = parser.parse(this.precedence - 1);
     
-    return {
-      cond: left,
-      thenArm,
-      elseArm,
-      toString() {
-        return `(${ this.cond }?${ this.thenArm }:${ this.elseArm })`;
-      },
-    };
+    return { toString() { return `(${left}?${thenArm}:${elseArm})`; } };
   }
 }, PrattParser.XFIX);
 
-parser.register('+', new PrefixUnaryParselet((token, right) => { 
-  return {
-    right,
-    toString() {
-      return `(+${right})`;
-    }
-  }
-}, Precedence.PREFIX), PrattParser.PREFIX);
-
-parser.register('-', new PrefixUnaryParselet((token, right) => { 
-  return {
-    right,
-    toString() {
-      return `(-${right})`;
-    }
-  }
-}, Precedence.PREFIX), PrattParser.PREFIX);
-
-parser.register('~', new PrefixUnaryParselet((token, right) => { 
-  return {
-    right,
-    toString() {
-      return `(~${right})`;
-    }
-  }
-}, Precedence.PREFIX), PrattParser.PREFIX);
-
-parser.register('!', new PrefixUnaryParselet((token, right) => { 
-  return {
-    right,
-    toString() {
-      return `(!${right})`;
-    }
-  }
-}, Precedence.PREFIX), PrattParser.PREFIX);
-    
-// For kicks, we'll make "!" both prefix and postfix, kind of like ++.
-parser.register('!', new PostfixUnaryParselet((token, left) => { 
-  return {
-    left,
-    toString() {
-      return `(${left}!)`;
-    }
-  }
-}, Precedence.POSTFIX), PrattParser.XFIX);
-
-parser.register('+', new BinaryParselet((token, left, right) => { 
-  return {
-    left, right,
-    toString() {
-      return `(${left}+${right})`;
-    }
-  }
-}, Precedence.SUM, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
-
-parser.register('-', new BinaryParselet((token, left, right) => { 
-  return {
-    left, right,
-    toString() {
-      return `(${left}-${right})`;
-    }
-  }
-}, Precedence.SUM, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
-
-parser.register('*', new BinaryParselet((token, left, right) => { 
-  return {
-    left, right,
-    toString() {
-      return `(${left}*${right})`;
-    }
-  }
-}, Precedence.PRODUCT, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
-
-parser.register('/', new BinaryParselet((token, left, right) => { 
-  return {
-    left, right,
-    toString() {
-      return `(${left}/${right})`;
-    }
-  }
-}, Precedence.PRODUCT, BinaryParselet.LEFT_ASSOC), PrattParser.XFIX);
-
-parser.register('^', new BinaryParselet((token, left, right) => { 
-  return {
-    left, right,
-    toString() {
-      return `(${left}^${right})`;
-    }
-  }
-}, Precedence.EXPONENT, BinaryParselet.RIGHT_ASSOC), PrattParser.XFIX);
-
-const punctuation = "()-+=*^/~?!:,".split('');
+const punctuation = "()-+=*^/~?!:;,".split('');
 function lex(str) {
   return str.split(' ').map(
     text => punctuation.indexOf(text) > -1
