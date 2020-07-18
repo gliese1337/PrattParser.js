@@ -45,7 +45,7 @@ To cover the most common, simple cases of prefix, postfix, and binary infix oper
 
 For infix operators, `associativity` is `true` for right-associative operators and `false` for left-associative operators. To avoid the use of potentially-confusing unlabelled boolean arguments in code, the `PrattParser` class provides static `PrattParser.LEFT_ASSOC` and `PrattParser.RIGHT_ASSOC` properties.
 
-Each of these methods takes a `cons` (for "constructor") callback which, given a token and left and/or right expressions, returns a parsed value of user-defined type T. This gives you the flexibility to define your own custom AST node types, or return eagerly-interpreted values, or anything else you might want to do; the library does not tie you to a specific abstract syntax tree format. It is also possible to perform validation in the `cons` function; e.g., 
+Each of these methods takes a `cons` (for "constructor") callback which, given a token and left and/or right expressions, returns a parsed value of user-defined type. This gives you the flexibility to define your own custom AST node types, or return eagerly-interpreted values, or anything else you might want to do; the library does not tie you to a specific abstract syntax tree format. It is also possible to perform validation in the `cons` function; e.g., 
 
 ```js
 parser.infix('=', 2, PrattParser.RIGHT_ASSOC, (token, left, right) => {
@@ -61,10 +61,10 @@ There is also a special method for registering *nullary* operators--i.e., termin
 
 Under the hood, the grammar is defined by registering *parselets*--bits of code that know how to parse a single syntactic production. Parselets come in two types: Prefix parselets, which handle expressions that start with a terminal token and encode prefix and circumfix operators, and Xfix parselets, which handle all other productions, encoding infix, postfix, and mixfix operators. If you need to encode a grammar that's a little more complicated than a simple collection of unary prefix, unary postfix, and binary infix operators, the library gives the ability to construct these parselets directly.
 
-Prefix parselets are objects with a single `parse` method with the signature `Parselet.parse<N, T>(parser: ExprParser<N, T>, token: T): N`. Xfix parselets conform to the slightly larger interface
+Prefix parselets are objects with a single `parse` method with the signature `Parselet.parse<N, T>(parser: ExprParser<N, T>, token: T): N`. Now, you might be wondering why parselets are implemented as objects with a single method, rather than just as first-class functions. Well, it's because Xfix parselets actually require an additional field:
 
 ```ts
-export interface IXfixParselet<N, T extends Token> extends Parselet<N, T> {
+export interface XfixParselet<N, T extends Token> extends Parselet<N, T> {
   readonly precedence: number;
   parse(parser: ExprParser<N, T>, token: T, left: N): N;
 }
@@ -125,8 +125,6 @@ The library also exports the following helper types:
 
 These are the same types used internally to implement the `prefix`, `postfix` and `infix` shortcut methods.
 
-Now, you might be wondering why parselets are implemented as objects with a single method, rather than just as first-class functions. Well, it's because Xfix parselets actually require additional fields:
-
 It is also possible to provide your own custom parselets, which need not be instances of any of the library types. To handle these cases, an extended form of the `register` method is provided which allows explicitly indicating whether or not the provided object should be treated as a Prefix parselet:
 
 * `parser.register(tokenType: string, parselet: Parselet<N, T>, prefix: true): void`
@@ -145,7 +143,7 @@ parser.register('?', {
 }, PrattParser.XFIX);
 ```
 
-For a slightly more complex example, involving parsing a variable number of argument expressions, consider the following implementations of an mixfix function call operator:
+For a slightly more complex example, involving parsing a variable number of argument expressions, consider the following implementations of a mixfix function call operator:
 
 ```ts
 parser.register('(', new XfixParselet((parser, token, left) => {
