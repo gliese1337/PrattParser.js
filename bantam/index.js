@@ -1,4 +1,4 @@
-const { PrattParser, PrefixUnaryParselet, PostfixUnaryParselet, BinaryParselet } = require('../dist');
+const { PrattParser } = require('../dist');
 
 const parser = new PrattParser();
 
@@ -27,52 +27,32 @@ parser.infix('=', Precedence.ASSIGNMENT, PrattParser.RIGHT_ASSOC, (token, left, 
   };
 });
 
-parser.prefix('+', Precedence.PREFIX, (token, right) => ({
-  toString() { return `(+${right})`; }
-}));
+const prefix_handler = (token, right) => ({
+  toString() { return `(${token.text}${right})`; }
+});
 
-parser.prefix('-', Precedence.PREFIX, (token, right) => ({
-  toString() { return `(-${right})`; }
-}));
-
-parser.prefix('~', Precedence.PREFIX, (token, right) => ({
-  toString() { return `(~${right})`; }
-}));
-
-parser.prefix('!', Precedence.PREFIX, (token, right) => ({
-  toString() { return `(!${right})`; }
-}));
+parser.prefix('+', Precedence.PREFIX, prefix_handler);
+parser.prefix('-', Precedence.PREFIX, prefix_handler);
+parser.prefix('~', Precedence.PREFIX, prefix_handler);
+parser.prefix('!', Precedence.PREFIX, prefix_handler);
 
 parser.postfix('!', Precedence.POSTFIX, (token, left) => ({
   toString() { return `(${left}!)`; }
 }));
 
-parser.infix('+', Precedence.SUM, PrattParser.LEFT_ASSOC, (token, left, right) => ({
-  toString() { return `(${left}+${right})`; }
-}));
+const infix_handler = (token, left, right) => ({
+  toString() { return `(${left}${token.text}${right})`; }
+});
 
-parser.infix('-', Precedence.SUM, PrattParser.LEFT_ASSOC, (token, left, right) => ({
-  toString() { return `(${left}-${right})`; }
-}));
-
-parser.infix('*', Precedence.PRODUCT, PrattParser.LEFT_ASSOC, (token, left, right) => ({
-  toString() { return `(${left}*${right})`; }
-}));
-
-parser.infix('/', Precedence.PRODUCT, PrattParser.LEFT_ASSOC, (token, left, right) => ({
-  toString() { return `(${left}/${right})`; }
-}));
-
-parser.infix('^', Precedence.EXPONENT, PrattParser.RIGHT_ASSOC, (token, left, right) => ({
-  toString() { return `(${left}^${right})`; }
-}));
-
-parser.infix(';', Precedence.STATEMENT, PrattParser.RIGHT_ASSOC, (token, left, right) => ({
-  toString() { return `(${left};${right})`; }
-}));
+parser.infix('+', Precedence.SUM, PrattParser.LEFT_ASSOC, infix_handler);
+parser.infix('-', Precedence.SUM, PrattParser.LEFT_ASSOC, infix_handler);
+parser.infix('*', Precedence.PRODUCT, PrattParser.LEFT_ASSOC, infix_handler);
+parser.infix('/', Precedence.PRODUCT, PrattParser.LEFT_ASSOC, infix_handler);
+parser.infix('^', Precedence.EXPONENT, PrattParser.RIGHT_ASSOC, infix_handler);
+parser.infix(';', Precedence.STATEMENT, PrattParser.RIGHT_ASSOC, infix_handler);
 
 parser.register('(', {
-  parse(parser, token) {
+  parse(parser, _token) {
     const expr = parser.parse(0);
     parser.consume(')');
     return { toString() { return ''+expr; } };
@@ -81,7 +61,7 @@ parser.register('(', {
 
 parser.register('(', {
   precedence: Precedence.CALL,
-  parse(parser, token, left) {
+  parse(parser, _token, left) {
     const args = [];
     // There may be no arguments at all.
     if (!parser.match(')')) {
@@ -97,7 +77,7 @@ parser.register('(', {
 
 parser.register('?', {
   precedence: Precedence.CONDITIONAL,
-  parse(parser, token, left) {
+  parse(parser, _token, left) {
     const thenArm = parser.parse(0);
     parser.consume(':');
     const elseArm = parser.parse(this.precedence - 1);
